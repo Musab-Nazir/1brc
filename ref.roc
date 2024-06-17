@@ -22,20 +22,21 @@ main =
 
         Err _ -> Stdout.line! "Failed to read file"
 
-insertToDict : Dict Str (List F32), Str, U64 -> Dict Str (List F32)
 insertToDict = \dict, readingLine, _ ->
     when Str.split readingLine ";" is
         [station, valStr] ->
             when Str.toF32 valStr is
-                Ok val ->
-                    Dict.update dict station (addReading val)
+                Ok temp ->
+                    Dict.update dict station \value ->
+                        when value is
+                            Missing -> Present { min: temp, mean: temp, max: temp }
+                            Present { min: oldMin, mean: oldMean, max: oldMax } ->
+                                Present {
+                                    min: Num.min temp oldMin,
+                                    mean: (temp + oldMean) / 2,
+                                    max: Num.max temp oldMax,
+                                }
 
                 Err _ -> dict
 
         _ -> dict
-
-addReading : F32 -> ([Present (List F32), Missing] -> [Present (List F32), Missing])
-addReading = \val -> \possibleValue ->
-        when possibleValue is
-            Missing -> Present (List.single val)
-            Present readings -> Present (List.append readings val)
